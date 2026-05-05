@@ -1,0 +1,12 @@
+node_modules/
+.vercel/
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.log
+.supabase/
+dist/
+build/
+*.p8
+secrets/

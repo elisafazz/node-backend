@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "buildCommand": null,
+  "outputDirectory": null,
+  "rewrites": [
+    { "source": "/tos", "destination": "/pages/tos.html" },
+    { "source": "/privacy", "destination": "/pages/privacy.html" },
+    { "source": "/eula", "destination": "/pages/eula.html" },
+    { "source": "/contact", "destination": "/pages/contact.html" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
+    }
+  ]
+}

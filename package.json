@@ -1,0 +1,31 @@
+{
+  "name": "node-backend",
+  "version": "0.1.0",
+  "description": "Backend for Node iOS app -- Vercel API for APNs push fan-out + static legal pages. Supabase Edge Functions live in supabase/functions/ and deploy via supabase CLI.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod",
+    "supabase:start": "supabase start",
+    "supabase:db:push": "supabase db push",
+    "supabase:functions:deploy": "supabase functions deploy",
+    "supabase:functions:deploy:all": "supabase functions deploy apple-exchange-code && supabase functions deploy apple-revoke && supabase functions deploy delete-user-data && supabase functions deploy cloudinary-sign && supabase functions deploy report-intake",
+    "test:smoke": "node scripts/smoke-test.mjs"
+  },
+  "dependencies": {
+    "@vercel/node": "^3.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-apn": "^6.4.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.12.0",
+    "supabase": "^1.180.0",
+    "typescript": "^5.5.0",
+    "vercel": "^34.0.0"
+  }
+}

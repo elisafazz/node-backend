@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Node -- Privacy Policy</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #222; }
+    h1 { font-size: 1.6rem; }
+    h2 { font-size: 1.2rem; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <h1>Node -- Privacy Policy</h1>
+  <p><em>Last updated: 2026-05-04</em></p>
+
+  <p>This document is a placeholder draft. A finalized Privacy Policy will be published before App Store submission.</p>
+
+  <h2>What we collect</h2>
+  <ul>
+    <li><strong>Account identifiers</strong>: an opaque Apple user identifier from Sign in with Apple, plus your chosen display name and optional avatar</li>
+    <li><strong>Content you post</strong>: photos, stories, captions, text posts (called "thoughts"), per-node identity overrides</li>
+    <li><strong>Device data</strong>: APNs device token (so we can send push notifications), iOS version, app version</li>
+    <li><strong>Diagnostics</strong>: error logs (no personal content) for debugging</li>
+  </ul>
+
+  <p>We do NOT collect: email address, real name, phone number, contacts, location, advertising identifiers, or analytics events.</p>
+
+  <h2>What we don't collect</h2>
+  <p>We do not have user-tracking analytics. We do not sell or share data with advertisers. We do not buy data about you from anyone.</p>
+
+  <h2>Where data is stored</h2>
+  <ul>
+    <li>Database: Supabase (Postgres on AWS, region TBD)</li>
+    <li>Media (photos and story images): Cloudinary</li>
+    <li>Push delivery: Apple Push Notification service</li>
+  </ul>
+
+  <h2>Who can see your content</h2>
+  <p>Only the members of the specific node where you posted can see your content. We use Postgres row-level security to enforce this on every query. Outside that node, your content is invisible -- including to Node staff, except when reviewing a report or fulfilling an account deletion request.</p>
+
+  <h2>Account deletion</h2>
+  <p>You may delete your account from in-app Settings. Deletion:</p>
+  <ul>
+    <li>Revokes the Apple authorization grant via Apple's `/auth/revoke` endpoint</li>
+    <li>Deletes all content you authored (stories, photos, thoughts) from our database</li>
+    <li>Deletes all media you uploaded from Cloudinary</li>
+    <li>Removes you from every node you were a member of</li>
+    <li>Deletes your user record</li>
+  </ul>
+  <p>Deletion is permanent and irreversible. We retain a deletion-request audit row for compliance purposes.</p>
+
+  <h2>Children</h2>
+  <p>Node is not intended for users under 13. We do not knowingly collect data from children under 13.</p>
+
+  <h2>Changes</h2>
+  <p>We may update this policy. Material changes will be communicated in-app.</p>
+
+  <h2>Contact</h2>
+  <p><a href="/contact">/contact</a></p>
+
+  <p><a href="/tos">Terms of Service</a> | <a href="/eula">EULA</a> | <a href="/contact">Contact</a></p>
+</body>
+</html>
