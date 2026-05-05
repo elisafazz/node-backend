@@ -24,10 +24,20 @@ create or replace function public.handle_new_auth_user()
 returns trigger language plpgsql security definer set search_path = public, auth as $$
 declare
   default_name text;
+  apple_id text;
 begin
-  default_name := coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1), 'New user');
+  -- Apple Sign-In may send name as full_name OR as separated firstName/lastName via raw_user_meta_data.
+  -- Email may be relay-masked or null with "Hide My Email." Fall back gracefully.
+  default_name := coalesce(
+    nullif(new.raw_user_meta_data->>'full_name', ''),
+    nullif(trim(coalesce(new.raw_user_meta_data->>'firstName', '') || ' ' || coalesce(new.raw_user_meta_data->>'lastName', '')), ''),
+    nullif(split_part(coalesce(new.email, ''), '@', 1), ''),
+    'New user'
+  );
+  -- Apple's "sub" claim is the stable user identifier. Supabase exposes it as provider_id in raw_user_meta_data.
+  apple_id := nullif(new.raw_user_meta_data->>'provider_id', '');
   insert into public.users(id, apple_user_id, display_name, avatar_url)
-    values (new.id, new.raw_user_meta_data->>'provider_id', default_name, null)
+    values (new.id, apple_id, default_name, null)
     on conflict (id) do nothing;
   return new;
 end;
@@ -56,7 +66,13 @@ create table private.deletion_requests (
   error text
 );
 
-revoke all on schema private from anon, authenticated;
+-- Lock private schema down to service_role only.
+-- service_role is the role used by Edge Functions calling supabase-js with the SERVICE_ROLE_KEY.
+revoke all on schema private from anon, authenticated, public;
+revoke all on all tables in schema private from anon, authenticated, public;
+grant usage on schema private to service_role;
+grant all on all tables in schema private to service_role;
+alter default privileges in schema private grant all on tables to service_role;
 
 -- ============================================================
 -- 4. Nodes + memberships

@@ -8,53 +8,85 @@
     body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #222; }
     h1 { font-size: 1.6rem; }
     h2 { font-size: 1.2rem; margin-top: 2rem; }
+    h3 { font-size: 1rem; margin-top: 1.25rem; }
+    code { background: #f4f4f4; padding: 0 4px; border-radius: 3px; }
   </style>
 </head>
 <body>
   <h1>Node -- Privacy Policy</h1>
-  <p><em>Last updated: 2026-05-04</em></p>
+  <p><em>Last updated: 2026-05-05</em></p>
 
-  <p>This document is a placeholder draft. A finalized Privacy Policy will be published before App Store submission.</p>
+  <p>Node is an iOS app for small private group spaces of two to ten people. This policy describes what we collect, why, where it is stored, and how to delete it. This is the policy referenced from the App Store privacy nutrition label.</p>
 
   <h2>What we collect</h2>
+
+  <h3>Account identifiers</h3>
   <ul>
-    <li><strong>Account identifiers</strong>: an opaque Apple user identifier from Sign in with Apple, plus your chosen display name and optional avatar</li>
-    <li><strong>Content you post</strong>: photos, stories, captions, text posts (called "thoughts"), per-node identity overrides</li>
-    <li><strong>Device data</strong>: APNs device token (so we can send push notifications), iOS version, app version</li>
-    <li><strong>Diagnostics</strong>: error logs (no personal content) for debugging</li>
+    <li>The opaque Apple user identifier returned by Sign in with Apple (used to recognize you across sign-ins; cannot be used to look you up outside Node)</li>
+    <li>Your email address as returned by Apple at first sign-in. Many users will return Apple's private relay address; we treat both equivalently. Used only to identify your account; we do not send marketing email.</li>
+    <li>Your display name, optional avatar URL, and any per-node display name overrides you choose</li>
   </ul>
 
-  <p>We do NOT collect: email address, real name, phone number, contacts, location, advertising identifiers, or analytics events.</p>
+  <h3>Content you post</h3>
+  <ul>
+    <li>Photos and story images, hosted on Cloudinary</li>
+    <li>Captions, tags, and other text content you write (including "thoughts" posts)</li>
+    <li>Metadata: which node a piece of content was posted to, when it was posted, who posted it</li>
+  </ul>
 
-  <h2>What we don't collect</h2>
-  <p>We do not have user-tracking analytics. We do not sell or share data with advertisers. We do not buy data about you from anyone.</p>
+  <h3>Device data</h3>
+  <ul>
+    <li>APNs device token (so we can deliver push notifications)</li>
+    <li>iOS version and Node app version (for crash triage)</li>
+  </ul>
+
+  <h3>Diagnostics</h3>
+  <ul>
+    <li>Crash reports surfaced through Apple's standard developer tools. These are aggregated and not linked to your identity.</li>
+  </ul>
+
+  <h2>What we do NOT collect</h2>
+  <ul>
+    <li>Your phone number, real name (beyond what you choose as your display name), physical address, or location</li>
+    <li>Your contacts. Node never reads your iOS address book.</li>
+    <li>Advertising identifiers (IDFA), or any data used to track you across other apps and websites</li>
+    <li>Third-party analytics events. Node has no analytics SDK in v1.</li>
+    <li>Browsing history or search history</li>
+  </ul>
+
+  <h2>How your data is used</h2>
+  <p>We use the data above only to operate the service: to authenticate you, store your content, deliver it to the other members of the nodes you are in, and send you push notifications about activity in those nodes. We do not sell your data, share it with advertisers, or buy data about you from anyone.</p>
 
   <h2>Where data is stored</h2>
   <ul>
-    <li>Database: Supabase (Postgres on AWS, region TBD)</li>
-    <li>Media (photos and story images): Cloudinary</li>
-    <li>Push delivery: Apple Push Notification service</li>
+    <li><strong>Database</strong>: Supabase (Postgres on AWS, US region). Postgres row-level security restricts every read and write so that only members of a node can see that node's data.</li>
+    <li><strong>Media</strong> (photos, story images): Cloudinary</li>
+    <li><strong>Push delivery</strong>: Apple Push Notification service</li>
   </ul>
 
   <h2>Who can see your content</h2>
-  <p>Only the members of the specific node where you posted can see your content. We use Postgres row-level security to enforce this on every query. Outside that node, your content is invisible -- including to Node staff, except when reviewing a report or fulfilling an account deletion request.</p>
+  <p>Only the members of the specific node where you posted can see your content. Row-level security enforces this on every query. Node staff cannot read your content outside of: (a) reviewing a report you or another member submitted, or (b) executing an account-deletion request.</p>
 
   <h2>Account deletion</h2>
-  <p>You may delete your account from in-app Settings. Deletion:</p>
+  <p>You may delete your account from in-app Settings at any time. Deletion runs the following cascade:</p>
   <ul>
-    <li>Revokes the Apple authorization grant via Apple's `/auth/revoke` endpoint</li>
-    <li>Deletes all content you authored (stories, photos, thoughts) from our database</li>
-    <li>Deletes all media you uploaded from Cloudinary</li>
+    <li>Revokes the Apple authorization grant via Apple's <code>/auth/revoke</code> endpoint, so Apple stops returning your identifier to us on future sign-ins</li>
+    <li>Deletes every story, photo, and thought you authored from our database</li>
+    <li>Deletes every media asset you uploaded from Cloudinary</li>
     <li>Removes you from every node you were a member of</li>
-    <li>Deletes your user record</li>
+    <li>Deletes your user record from our database</li>
+    <li>Deletes your authentication record from our identity provider</li>
   </ul>
-  <p>Deletion is permanent and irreversible. We retain a deletion-request audit row for compliance purposes.</p>
+  <p>Deletion is permanent and irreversible. We retain a deletion-request audit row (timestamp + opaque user ID hash, no content) for compliance purposes.</p>
 
   <h2>Children</h2>
-  <p>Node is not intended for users under 13. We do not knowingly collect data from children under 13.</p>
+  <p>Node is rated 12+ and is not intended for users under 13. We do not knowingly collect data from children under 13. If you believe a child under 13 has signed up, contact us and we will delete the account.</p>
+
+  <h2>Your rights</h2>
+  <p>You have the right to access, correct, or delete the data we hold about you. The in-app account deletion flow exercises the deletion right. For access or correction requests, contact us at the address on the <a href="/contact">contact page</a>.</p>
 
   <h2>Changes</h2>
-  <p>We may update this policy. Material changes will be communicated in-app.</p>
+  <p>We may update this policy. Material changes will be communicated via in-app notice. Continued use of Node after a material change constitutes acceptance of the updated policy.</p>
 
   <h2>Contact</h2>
   <p><a href="/contact">/contact</a></p>

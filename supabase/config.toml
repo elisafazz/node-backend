@@ -6,7 +6,10 @@ project_id = "node"
 [api]
 enabled = true
 port = 54321
-schemas = ["public", "graphql_public"]
+# private must be exposed so service_role can access deletion_requests and apple_oauth_credentials
+# via PostgREST (used by delete-user-data Edge Function). USAGE is revoked from anon/authenticated
+# in migration 0001 so non-service-role clients still get a 401 if they try to hit this schema.
+schemas = ["public", "graphql_public", "private"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 

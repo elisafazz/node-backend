@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript build
+        run: npx tsc --noEmit
+
+      - name: Verify Edge Function entrypoints exist
+        run: |
+          for fn in apple-exchange-code apple-revoke cloudinary-sign delete-user-data report-intake; do
+            test -f "supabase/functions/$fn/index.ts" || { echo "Missing supabase/functions/$fn/index.ts"; exit 1; }
+          done
+
+      - name: Verify static legal pages exist
+        run: |
+          for page in tos privacy eula; do
+            test -f "pages/$page.html" || { echo "Missing pages/$page.html"; exit 1; }
+          done
+          test -f "api/contact.ts" || { echo "Missing api/contact.ts (dynamic /contact route)"; exit 1; }
+
+      - name: Shellcheck verify-deploy.sh
+        run: |
+          sudo apt-get install -y shellcheck
+          shellcheck scripts/verify-deploy.sh

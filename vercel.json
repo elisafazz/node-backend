@@ -7,7 +7,7 @@
     { "source": "/tos", "destination": "/pages/tos.html" },
     { "source": "/privacy", "destination": "/pages/privacy.html" },
     { "source": "/eula", "destination": "/pages/eula.html" },
-    { "source": "/contact", "destination": "/pages/contact.html" }
+    { "source": "/contact", "destination": "/api/contact" }
   ],
   "headers": [
     {
