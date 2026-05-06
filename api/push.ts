@@ -87,6 +87,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "missing_params" });
   }
 
+  // Truncate to APNs-safe lengths before embedding in the JSON payload.
+  // APNs total payload limit is 4096 bytes; 100+200 chars leaves ample room for
+  // the aps envelope, thread-id, node_ids array, and JSON framing.
+  const safeTitle = body.title.slice(0, 100);
+  const safeBody = body.body.slice(0, 200);
+
   // If the caller is a user, the author_user_id MUST match their JWT identity.
   // Prevents one user from spamming push fan-out as if they were another user.
   if (authedUserId && authedUserId !== body.author_user_id) {
@@ -151,7 +157,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const payload = JSON.stringify({
     aps: {
-      alert: { title: body.title, body: body.body },
+      alert: { title: safeTitle, body: safeBody },
       sound: "default",
       "thread-id": body.category ?? "node-update",
     },
