@@ -18,8 +18,7 @@
   },
   "dependencies": {
     "@vercel/node": "^3.2.0",
-    "jsonwebtoken": "^9.0.2",
-    "node-apn": "^6.4.0"
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.6",

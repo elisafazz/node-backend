@@ -6,7 +6,9 @@ node_modules/
 .DS_Store
 *.log
 .supabase/
+supabase/.temp/
 dist/
 build/
 *.p8
 secrets/
+.vercel

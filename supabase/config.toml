@@ -16,7 +16,7 @@ max_rows = 1000
 [db]
 port = 54322
 shadow_port = 54320
-major_version = 15
+major_version = 17
 
 [db.pooler]
 enabled = false
@@ -50,12 +50,15 @@ enable_confirmations = false
 
 [auth.external.apple]
 enabled = true
-# client_id, secret set via supabase secrets (production); in development, set in env
-# client_id = "com.elisafazzari.node.signin"
-# secret = "set via SUPABASE_AUTH_EXTERNAL_APPLE_SECRET"
+client_id = "com.elisafazzari.node.signin"
+# secret intentionally unset: we bypass Supabase's built-in SiWA flow per ADR-004
+# (Edge Function `apple-exchange-code` does the JWT signing to capture refresh tokens).
+# This provider entry exists only so the dashboard config validates.
+secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
 
-[functions]
-verify_jwt = true
+# Per-function JWT verification. Default in newer CLI is true; we override apple-revoke
+# because Apple POSTs the server-to-server notification with no JWT (Apple signs the
+# payload itself and we verify that signature inside the function).
 
 [functions.apple-exchange-code]
 verify_jwt = true

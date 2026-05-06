@@ -10,7 +10,7 @@ For one-time setup, see `~/Dropbox/claude/node/SETUP-WALKTHROUGH.md`. This file 
 
 ```
 Vercel project        node-backend
-Vercel deploy URL     https://node-backend-<hash>.vercel.app (alias: node-backend.vercel.app)
+Vercel deploy URL     https://node-backend-<hash>.vercel.app (alias: node-app-backend.vercel.app)
 Supabase project      node-prod  (region us-west-1)
 GitHub repo           elisafazz/node-backend (main = production)
 Local code            ~/Dropbox/claude_work/node-backend/
@@ -20,7 +20,7 @@ Secrets dir           ~/Dropbox/claude-secrets/node/  (NEVER commit)
 Health check (run anytime):
 ```bash
 cd ~/Dropbox/claude_work/node-backend
-VERCEL_URL=https://node-backend.vercel.app \
+VERCEL_URL=https://node-app-backend.vercel.app \
 SUPABASE_URL=https://<ref>.supabase.co \
 SUPABASE_ANON_KEY=<key> \
 ./scripts/verify-deploy.sh
@@ -36,7 +36,7 @@ SUPABASE_ANON_KEY=<key> \
 
 1. Curl the push endpoint directly:
    ```
-   curl -X POST https://node-backend.vercel.app/api/push -H "content-type: application/json" -d '{}'
+   curl -X POST https://node-app-backend.vercel.app/api/push -H "content-type: application/json" -d '{}'
    ```
    - 4xx response = function alive, your client request was malformed
    - 5xx response = function failing internally; go to Vercel logs

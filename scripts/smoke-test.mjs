@@ -3,7 +3,7 @@
 // Proves the routing is wired and the functions are deployed; does NOT require live APNs / Apple / Cloudinary credentials.
 //
 // Usage:
-//   VERCEL_URL=https://node-backend.vercel.app SUPABASE_URL=https://abc.supabase.co node scripts/smoke-test.mjs
+//   VERCEL_URL=https://node-app-backend.vercel.app SUPABASE_URL=https://abc.supabase.co node scripts/smoke-test.mjs
 
 const VERCEL_URL = (process.env.VERCEL_URL ?? "").replace(/\/$/, "");
 const SUPABASE_URL = (process.env.SUPABASE_URL ?? "").replace(/\/$/, "");
