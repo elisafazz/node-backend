@@ -19,7 +19,7 @@ create table public.boop_visibility (
   node_id uuid not null references public.nodes(id) on delete cascade,
   primary key (boop_id, node_id)
 );
-create index boop_visibility_node_idx on public.boop_visibility(node_id, created_at desc)
+create index boop_visibility_node_idx on public.boop_visibility(node_id)
   include (boop_id);
 create index boop_visibility_boop_idx on public.boop_visibility(boop_id);
 

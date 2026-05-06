@@ -42,7 +42,11 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
-  const { data: report, error: insertErr } = await admin.from("reports").insert({
+  // Insert via the user's JWT-authenticated client so the reports_member_insert
+  // RLS check (node_id is null OR is_member_of(node_id)) actually runs.
+  // Using the admin client here would bypass that check and let any authenticated
+  // user file reports against nodes they aren't in.
+  const { data: report, error: insertErr } = await userClient.from("reports").insert({
     reporter_user_id: reporterId,
     node_id: body.node_id ?? null,
     target_kind: body.target_kind,

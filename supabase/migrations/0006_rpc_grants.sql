@@ -12,3 +12,6 @@ revoke execute on function public.join_node_by_invite_code(text) from public;
 
 grant execute on function public.rotate_invite_code(uuid) to authenticated;
 revoke execute on function public.rotate_invite_code(uuid) from public;
+
+grant execute on function public.confirm_meeting_slot(uuid, uuid) to authenticated;
+revoke execute on function public.confirm_meeting_slot(uuid, uuid) from public;

@@ -138,10 +138,10 @@ Deno.serve(async (req) => {
   });
   if (rowErrors.length > 0) {
     console.error("row_delete_partial_failure", rowErrors);
-  } else {
-    await admin.schema("private" as any).from("deletion_requests")
-      .update({ status: "rows_deleted" }).eq("user_id", userId);
   }
+  // We don't write a between-state status here -- 'rows_deleted' isn't in the
+  // deletion_requests CHECK constraint and the next step (auth.admin.deleteUser)
+  // either succeeds and bumps to 'completed', or fails and bumps to 'failed'.
 
   // 8. Auth user (cascades to public.users via FK on delete cascade).
   // This is the point of no return -- once auth.admin.deleteUser succeeds the account is
