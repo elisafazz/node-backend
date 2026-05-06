@@ -55,9 +55,13 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "storage_failed" }), { status: 500 });
   }
 
-  // Email notification (best-effort; do not fail the request if email fails)
-  // V1: log to console so Elisa can monitor via Supabase logs.
-  // Post-v1: integrate Resend or similar email API.
+  // Email notification: best-effort; do not fail the request if email fails.
+  // Always log to Supabase logs for forensic trail. If Resend is configured, also send email
+  // so Elisa sees reports within the SLA committed to in /tos ("48 hours imminent harm; 7 days otherwise").
+  const contactEmail = Deno.env.get("CONTACT_EMAIL");
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  const resendFrom = Deno.env.get("RESEND_FROM") ?? "reports@node.elisafazzari.com";
+
   console.info(JSON.stringify({
     event: "ugc_report",
     report_id: report.id,
@@ -65,8 +69,49 @@ Deno.serve(async (req) => {
     target_kind: body.target_kind,
     target_id: body.target_id,
     reason: body.reason.substring(0, 200),
-    contact_email: Deno.env.get("CONTACT_EMAIL") ?? "(unset)",
+    contact_email: contactEmail ?? "(unset)",
+    email_sent: false,
   }));
+
+  if (contactEmail && resendApiKey) {
+    try {
+      const subject = `[Node UGC report] ${body.target_kind} ${body.target_id}`;
+      const text = [
+        `Report ID: ${report.id}`,
+        `Reporter: ${reporterId}`,
+        `Node: ${body.node_id ?? "(none)"}`,
+        `Target kind: ${body.target_kind}`,
+        `Target id: ${body.target_id}`,
+        ``,
+        `Reason:`,
+        body.reason,
+      ].join("\n");
+
+      const emailRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: resendFrom,
+          to: [contactEmail],
+          subject,
+          text,
+        }),
+      });
+      if (!emailRes.ok) {
+        const errBody = await emailRes.text().catch(() => "");
+        console.error("resend_email_failed", emailRes.status, errBody.substring(0, 500));
+      } else {
+        console.info("ugc_report_emailed", report.id);
+      }
+    } catch (emailErr) {
+      console.error("resend_email_throw", emailErr instanceof Error ? emailErr.message : String(emailErr));
+    }
+  } else if (!resendApiKey) {
+    console.warn("RESEND_API_KEY unset -- report logged only. Set RESEND_API_KEY + CONTACT_EMAIL to enable email delivery.");
+  }
 
   return new Response(JSON.stringify({ ok: true, report_id: report.id }), {
     status: 200,

@@ -121,27 +121,47 @@ Deno.serve(async (req) => {
       .update({ status: "media_scrubbed" }).eq("user_id", userId);
   }
 
-  // 5. Delete user-authored rows. Cascades from public.users handle most of this if we deleted the user, but we
-  //    want explicit control here so deletion_requests can mark each step.
-  await Promise.all([
+  // 5–7. Delete user-authored rows, memberships, and Apple credentials.
+  // These run before auth.admin.deleteUser so the audit trail is accurate even if the
+  // auth step fails. If any row-delete fails we log it and continue -- the auth deletion
+  // that follows will cascade FK-delete any rows that survived.
+  const rowErrors: string[] = [];
+  const rowDeletes = await Promise.allSettled([
     admin.from("stories").delete().eq("author_user_id", userId),
     admin.from("photos").delete().eq("author_user_id", userId),
     admin.from("thoughts").delete().eq("author_user_id", userId),
+    admin.from("memberships").delete().eq("user_id", userId),
+    admin.schema("private" as any).from("apple_oauth_credentials").delete().eq("user_id", userId),
   ]);
+  rowDeletes.forEach((r, i) => {
+    if (r.status === "rejected") rowErrors.push(`step${5 + i}: ${r.reason}`);
+  });
+  if (rowErrors.length > 0) {
+    console.error("row_delete_partial_failure", rowErrors);
+  } else {
+    await admin.schema("private" as any).from("deletion_requests")
+      .update({ status: "rows_deleted" }).eq("user_id", userId);
+  }
 
-  // 6. Memberships
-  await admin.from("memberships").delete().eq("user_id", userId);
-
-  // 7. Apple OAuth credential row
-  await admin.schema("private" as any).from("apple_oauth_credentials").delete().eq("user_id", userId);
-
-  // 8. Auth user (cascades to public.users via FK on delete cascade)
+  // 8. Auth user (cascades to public.users via FK on delete cascade).
+  // This is the point of no return -- once auth.admin.deleteUser succeeds the account is
+  // irrecoverably gone. We only proceed if the audit row is in a good state.
   const { error: deleteAuthErr } = await admin.auth.admin.deleteUser(userId);
   if (deleteAuthErr) {
-    console.error("auth_delete_failed", deleteAuthErr);
+    console.error("auth_delete_failed", deleteAuthErr, "row_errors", rowErrors);
     await admin.schema("private" as any).from("deletion_requests")
-      .update({ status: "failed", error: deleteAuthErr.message }).eq("user_id", userId);
+      .update({
+        status: "failed",
+        error: `auth_delete: ${deleteAuthErr.message}; row_errors: ${rowErrors.join("; ")}`,
+      }).eq("user_id", userId);
     return new Response(JSON.stringify({ error: "auth_delete_failed" }), { status: 500 });
+  }
+
+  // Cascade verification: confirm public.users row is gone (FK cascade should have removed it).
+  const { data: remainingUser } = await admin.from("users").select("id").eq("id", userId).maybeSingle();
+  if (remainingUser) {
+    console.error("cascade_incomplete: public.users row survived auth deletion for", userId);
+    await admin.from("users").delete().eq("id", userId);
   }
 
   // 9. Final audit

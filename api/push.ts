@@ -8,7 +8,12 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import jwt from "jsonwebtoken";
 
 interface PushBody {
-  node_id: string;
+  // Legacy single-node fan-out. Either node_id or node_ids must be provided, not both.
+  node_id?: string;
+  // Multi-node fan-out. Used by cross-node features (Stories, Boop, Meeting confirm).
+  // The server unions memberships across every node and dedupes recipients by user_id,
+  // so a user in N of the target nodes still receives exactly one push.
+  node_ids?: string[];
   author_user_id: string;
   title: string;
   body: string;
@@ -72,7 +77,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const body = req.body as PushBody;
-  if (!body.node_id || !body.author_user_id || !body.title || !body.body) {
+
+  // Normalize to a node_ids array. Accept either node_id or node_ids; reject empty/both.
+  const nodeIds: string[] = Array.isArray(body.node_ids) && body.node_ids.length > 0
+    ? body.node_ids
+    : (body.node_id ? [body.node_id] : []);
+
+  if (nodeIds.length === 0 || !body.author_user_id || !body.title || !body.body) {
     return res.status(400).json({ error: "missing_params" });
   }
 
@@ -88,29 +99,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     "content-type": "application/json",
   };
 
-  // If the caller is a user, verify they are actually a member of the target node.
-  // Without this check, knowing a node_id (UUID, hard to guess but not unguessable) would let
-  // an arbitrary user spam push to that node's members.
+  // If the caller is a user, verify they are actually a member of EVERY target node.
+  // Without this check, knowing a node_id would let an arbitrary user spam push to that node's members.
   if (authedUserId) {
+    const inList = nodeIds.map((id) => `"${id}"`).join(",");
     const memberCheck = await fetch(
-      `${supaUrl}/rest/v1/memberships?select=user_id&node_id=eq.${body.node_id}&user_id=eq.${authedUserId}`,
+      `${supaUrl}/rest/v1/memberships?select=node_id&user_id=eq.${authedUserId}&node_id=in.(${inList})`,
       { headers: supaHeaders },
     );
-    const memberRows = (await memberCheck.json()) as { user_id: string }[];
-    if (!memberRows.length) {
-      return res.status(403).json({ error: "not_a_member" });
+    const memberRows = (await memberCheck.json()) as { node_id: string }[];
+    const callerNodeIds = new Set(memberRows.map((r) => r.node_id));
+    const missing = nodeIds.filter((id) => !callerNodeIds.has(id));
+    if (missing.length > 0) {
+      return res.status(403).json({ error: "not_a_member", missing });
     }
   }
 
+  // Fetch memberships for ALL target nodes and dedupe recipients by user_id.
+  // This is the core fix for the multi-node fan-out: a user in 2-of-3 target nodes
+  // receives one push, not two.
+  const inList = nodeIds.map((id) => `"${id}"`).join(",");
   const membersRes = await fetch(
-    `${supaUrl}/rest/v1/memberships?select=user_id,device_token&node_id=eq.${body.node_id}`,
+    `${supaUrl}/rest/v1/memberships?select=user_id,device_token&node_id=in.(${inList})`,
     { headers: supaHeaders },
   );
   if (!membersRes.ok) {
     return res.status(502).json({ error: "membership_fetch_failed" });
   }
   const members = (await membersRes.json()) as MembershipRow[];
-  const targets = members.filter((m) => m.user_id !== body.author_user_id && !!m.device_token);
+  const seenUserIds = new Set<string>();
+  const targets: MembershipRow[] = [];
+  for (const m of members) {
+    if (m.user_id === body.author_user_id) continue;
+    if (!m.device_token) continue;
+    if (seenUserIds.has(m.user_id)) continue;
+    seenUserIds.add(m.user_id);
+    targets.push(m);
+  }
 
   const APNS_KEY_ID = process.env.APNS_KEY_ID!;
   const APNS_TEAM_ID = process.env.APNS_TEAM_ID!;
@@ -130,7 +155,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       sound: "default",
       "thread-id": body.category ?? "node-update",
     },
-    node_id: body.node_id,
+    // Send the first target node as a deeplink hint. Multi-node sends embed all node_ids
+    // so the client can route to the most relevant one.
+    node_id: nodeIds[0],
+    node_ids: nodeIds,
   });
 
   const failures: { token_masked: string; status: number; reason?: string }[] = [];
