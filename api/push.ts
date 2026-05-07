@@ -22,7 +22,11 @@ interface PushBody {
 
 interface MembershipRow {
   user_id: string;
-  device_token: string | null;
+}
+
+interface DeviceTokenRow {
+  user_id: string;
+  token: string;
 }
 
 const APNS_HOST = process.env.APNS_PRODUCTION === "true"
@@ -121,26 +125,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // Fetch memberships for ALL target nodes and dedupe recipients by user_id.
-  // This is the core fix for the multi-node fan-out: a user in 2-of-3 target nodes
-  // receives one push, not two.
+  // Step 1: get unique recipient user_ids from memberships (all target nodes, minus author).
   const inList = nodeIds.map((id) => `"${id}"`).join(",");
   const membersRes = await fetch(
-    `${supaUrl}/rest/v1/memberships?select=user_id,device_token&node_id=in.(${inList})`,
+    `${supaUrl}/rest/v1/memberships?select=user_id&node_id=in.(${inList})`,
     { headers: supaHeaders },
   );
   if (!membersRes.ok) {
     return res.status(502).json({ error: "membership_fetch_failed" });
   }
   const members = (await membersRes.json()) as MembershipRow[];
-  const seenUserIds = new Set<string>();
-  const targets: MembershipRow[] = [];
-  for (const m of members) {
-    if (m.user_id === body.author_user_id) continue;
-    if (!m.device_token) continue;
-    if (seenUserIds.has(m.user_id)) continue;
-    seenUserIds.add(m.user_id);
-    targets.push(m);
+  const recipientUserIds = [...new Set(
+    members
+      .map((m) => m.user_id)
+      .filter((uid) => uid !== body.author_user_id)
+  )];
+
+  // Step 2: look up every registered device token for those users.
+  // One user with 2 devices will have 2 rows -- both get a push.
+  // Two users in 3 shared nodes each get only one fetch here (deduped in step 1).
+  interface Target { user_id: string; device_token: string }
+  const targets: Target[] = [];
+
+  if (recipientUserIds.length > 0) {
+    const uidList = recipientUserIds.map((id) => `"${id}"`).join(",");
+    const tokensRes = await fetch(
+      `${supaUrl}/rest/v1/device_tokens?select=user_id,token&user_id=in.(${uidList})`,
+      { headers: supaHeaders },
+    );
+    if (tokensRes.ok) {
+      const rows = (await tokensRes.json()) as DeviceTokenRow[];
+      for (const row of rows) {
+        targets.push({ user_id: row.user_id, device_token: row.token });
+      }
+    }
+    // If device_tokens query fails, targets stays empty -- no push is better than crashing.
   }
 
   const APNS_KEY_ID = process.env.APNS_KEY_ID!;
@@ -213,14 +232,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (deadTokens.length > 0) {
-    // Best-effort cleanup. Failure to clear a token is non-fatal -- next push will try again.
+    // Best-effort cleanup from device_tokens table.
+    // Failure is non-fatal -- the token will just be retried on next push.
     await fetch(
-      `${supaUrl}/rest/v1/memberships?device_token=in.(${deadTokens.map((t) => `"${t}"`).join(",")})`,
-      {
-        method: "PATCH",
-        headers: supaHeaders,
-        body: JSON.stringify({ device_token: null }),
-      },
+      `${supaUrl}/rest/v1/device_tokens?token=in.(${deadTokens.map((t) => `"${t}"`).join(",")})`,
+      { method: "DELETE", headers: supaHeaders },
     ).catch(() => { /* swallow; logged via failures count */ });
   }
 
